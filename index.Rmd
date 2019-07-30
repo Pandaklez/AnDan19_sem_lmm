@@ -1,0 +1,259 @@
+---
+title: "Семинар по смешанным моделям"
+author: "Anna Klezovich"
+date: '31.07.2019'
+output:
+    html_document:
+        toc: true
+        toc_float: true
+        toc_depth: 2
+---
+
+Импортируем все нужные пакеты
+```{r, echo=FALSE}
+library(mlmRev)
+library(lme4)
+library(ggplot2)
+library(lmtest)
+library(tidyverse)
+```
+
+## Politeness
+```{r}
+polite <- read.csv("http://www.bodowinter.com/tutorial/politeness_data.csv")
+head(polite)
+str(polite)
+```
+
+```{r}
+ggplot(polite, aes(x = factor(scenario), y = frequency, fill = factor(attitude)))+geom_boxplot()
+```
+
+Визуализируем переменные, которые мы хотим считать за рандомные эффекты
+```{r}
+ggplot(polite, aes(x=frequency, fill=subject)) +
+geom_density(alpha=0.4)+facet_grid(gender ~ .)
+```
+
+```{r}
+fit_1 <- lmer(frequency ~ attitude + (1|subject) + (1|scenario), polite)
+summary(fit_1)
+```
+
+А что будет, если мы включим пол в основные эффекты?
+```{r}
+#fit_2 <- lmer(frequency ~ attitude + gender + (1|subject) + (1|scenario), polite)
+#summary(fit_2)
+```
+
+Да ничего не будет вообще-то. Как же тогда определять какие эффекты фиксированные, а какие - случайные?
+
+Определения фиксированных и случайных эффектов из разных умных книжек:
+
+1. Fixed effects are constant across individuals, and random effects vary. (Kreft & de Leeuw 1998)
+
+2. Effects are fixed if they are interesting in themselves or random if there is interest in the underlying population. (Searle, Casella & McCulloch 1992)
+
+3. When a sample exhausts the population, the corresponding variable is fixed; when the sample is a small (i.e., negligible) part of the population the corresponding variable is random (Green & Tukey 1960)
+
+4. Fixed effects are estimated using least squares (or, more generally, maximum likelihood) and random effects are estimated with **shrinkage** (Snijders and Bosker 1999)
+
+Какая из этих моделей лучше?
+```{r}
+#AIC(fit_1)
+#AIC(fit_2)
+```
+
+Проинтерпретируйте результаты лучшей модели способами, которые мы обсудили ранее.
+
+## Speed dating
+```{r}
+speed_dating <- read.csv("speed_dating.csv")
+head(speed_dating)
+#str(speed_dating)
+#summary(speed_dating)
+```
+
+Data exploration
+```{r}
+cor.test(speed_dating$gender, speed_dating$match)
+cor.test(speed_dating$reading, speed_dating$match)
+cor.test(speed_dating$sports, speed_dating$match) 
+cor.test(speed_dating$goal, speed_dating$match)
+
+cor.test(speed_dating$music, speed_dating$match) #
+cor.test(speed_dating$go_out, speed_dating$match) #
+
+cor.test(speed_dating$date, speed_dating$match) #
+
+cor.test(speed_dating$art, speed_dating$match) #
+cor.test(speed_dating$attr, speed_dating$match) #
+cor.test(speed_dating$dec, speed_dating$match) 
+
+# Можно придумать что-то самим
+cor.test((speed_dating$age_o - speed_dating$age)^2, speed_dating$match) #
+
+# First, turn numeric to factors where needed
+speed_dating$dec <- as.factor(speed_dating$dec)
+speed_dating$goal <- as.factor(speed_dating$goal)
+speed_dating$music <- as.factor(speed_dating$music)
+speed_dating$gender <- as.factor(speed_dating$gender)
+speed_dating$sports <- as.factor(speed_dating$sports)
+speed_dating$career <- as.factor(speed_dating$career)
+speed_dating$date <- as.factor(speed_dating$date)
+speed_dating$go_out <- as.factor(speed_dating$go_out)
+speed_dating$sinc <- as.factor(speed_dating$sinc)
+speed_dating$attr <- as.factor(speed_dating$attr)
+speed_dating$art <- as.factor(speed_dating$art)
+speed_dating$from <- as.factor(speed_dating$from)
+speed_dating$wave <- as.factor(speed_dating$wave)
+speed_dating$attr <- as.factor(speed_dating$attr)
+speed_dating$zipcode <- as.factor(speed_dating$zipcode)
+speed_dating$intel <- as.factor(speed_dating$intel)
+speed_dating$fun <- as.factor(speed_dating$fun)
+speed_dating$reading <- as.factor(speed_dating$reading)
+speed_dating$theater <- as.factor(speed_dating$theater)
+speed_dating$shar <- as.factor(speed_dating$shar)
+speed_dating$amb <- as.factor(speed_dating$amb)
+
+str(speed_dating)
+
+newvars <- c("gender", "reading", "sports", "goal", "career", "music", "date", "go_out", "art", "attr", "age_o", "age")
+# Кажется, go_out и date не независимы
+
+newvars <- c("gender", "reading", "sports", "goal", "career", "music", "date", "go_out", "attr", "from", "zipcode", "sinc")
+short_sd <- speed_dating[newvars]
+pairs(short_sd)
+# probably "from" and "zipcode are collinear"
+
+ggplot(speed_dating, aes(x = factor(music), y = age, col = factor(dec)))+geom_point()
+```
+
+Прикольно, вроде есть какой-то эффект у wave и gender случайный
+```{r}
+ggplot(speed_dating, aes(x=factor(dec), fill=factor(wave))) +
+geom_density(alpha=0.2)+facet_grid(gender ~ .)
+
+ggplot(speed_dating, aes(x=factor(dec), fill=factor(wave))) +
+geom_density(alpha=0.3)
+
+```
+
+```{r}
+ggplot(data = speed_dating, aes(x = intel, y = age, fill = dec)) + 
+  geom_boxplot()
+```
+
+Попытаемся зафитить модель
+
+```{r}
+#fit2 = glmer(dec ~ date + intel + (1|wave:iid) + (1|gender),
+#                 data=speed_dating, family=binomial)
+#summary(fit2) #, correlation=F)
+```
+
+```{r}
+#fit2 = glmer(dec ~ date + music + (1|wave:iid) + (1|gender),
+#                 data=speed_dating, family=binomial)
+#summary(fit2) #, correlation=F)
+```
+
+## Uncorrelated slope and intercept + model comparison
+
+Вот какие-то сгенерированные данные.
+```{r}
+set.seed(22)
+Ngroups = 50
+NperGroup = 3
+N = Ngroups*NperGroup
+groups = factor(rep(1:Ngroups, each=NperGroup))
+re_int = rnorm(Ngroups, sd=.75)
+re_slope = rnorm(Ngroups, sd=.25)
+e = rnorm(N, sd=.25)
+x = rnorm(N)
+y = (2 + re_int[groups]) + (.5 + re_slope[groups])*x + e
+
+d = data.frame(x, y, groups)
+```
+
+Сравним, какая из двух моделей лучше описывает наши искусственные данные. 
+```{r}
+model_ints_only = lmer(y ~ x + (1|groups), REML=F, data=d)
+model_with_slopes = lmer(y ~ x + (1|groups) + (0 + x|groups), REML=F, data=d)
+anova(model_ints_only, model_with_slopes)
+
+```
+
+На самом деле, датасеты, в которых slope и intercept нескоррелированы практически не встречаются в реальной жизни.
+
+## Real linguistic research
+
+Это задание на то, чтобы найти ошибку в исследовании наивного третьекурсника-лингвиста (меня) [А ещё, конечно же, на интерпретацию glmer]
+
+Итак, мы хотим узнать, как порядок слов в именной группе относительно существительного зависит от типа модификатора, который при нём используется. (Звучит, максимально скучно, но это данные про русский жестовый язык, что сразу же делает эту задачу интереснее))
+
+```{r}
+adj<-read.delim("more_rows_second.csv")
+
+head(adj)
+```
+
+```{r}
+#then I turn the variables in question into factors because they are automatically recognized as integers
+adj$modifiers<-as.factor(adj$modifiers)
+adj$position<-as.factor(adj$Annotation)
+colnames(adj)[2]<-"signer" #change the name of the column to a less confusing one
+adj <- adj[c("modifiers", "position", "signer")]
+```
+
+```{r}
+#Let's first see what the distribution is across the two factors
+tab<-table(adj$position, adj$modifiers)
+head(tab)
+```
+
+```{r}
+colnames(tab)<-c("post", "pre")
+rownames(tab)<-c("more", "one")
+prop_tab <- prop.table(tab, margin = 1)
+prop_tab
+```
+О чем нам это говорит? В обоих случаях и с одинарным модификатором, и с несколькими модификаторами, видна склонность к препозиции, но это склонность немного сильнее для одинарных модификаторов.
+
+```{r}
+#then I set up contrasts so that one modifier will be coded as 1/2, and more than 1 modifier as -1/2.
+contrast<-rbind(-1/2,1/2) # 0 many 1 one
+colnames(contrast)<-c("+1-many")
+contrasts(adj$modifiers)<-contrast
+contrasts(adj$modifiers)
+```
+
+```{r}
+model<-glmer(formula = position ~ modifiers + (1+modifiers|signer), data=adj, family=binomial)
+summary(model)
+```
+
+The model shows that overall preposition is significantly more likely (exp(0.75)=2.117 times more likely)
+The model also shows that the odds of getting preposition is significantly more likely with a signle modifier than with plural modifiers (exp(0.9111)=2.487057 times more likely)
+
+```{r}
+model2<-glmer(formula = position ~ modifiers + (1|signer), data=adj, family=binomial)
+summary(model2)
+```
+
+```{r}
+anova(model2, model) # model is better LogLik closer to zero, AIC is smaller, stastically different from model2
+```
+
+"The model shows that overall the
+preposition is 2.13 (exp(0.7557)) times more likely than the postposition regardless of the number
+of modifiers by noun. In addition to that, the model shows that the preposition is 2.23 (exp(0.7998))
+times more likely with a single modifier than with multiple modifiers."
+
+Что не так? И как правильно?
+
+## References
+
+1. stepik Основы статистики. Часть 3.
+2.
+3.
