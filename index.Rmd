@@ -42,8 +42,8 @@ summary(fit_1)
 
 А что будет, если мы включим пол в основные эффекты?
 ```{r}
-#fit_2 <- lmer(frequency ~ attitude + gender + (1|subject) + (1|scenario), polite)
-#summary(fit_2)
+fit_2 <- lmer(frequency ~ attitude + gender + (1|subject) + (1|scenario), polite)
+summary(fit_2)
 ```
 
 Да ничего не будет вообще-то. Как же тогда определять какие эффекты фиксированные, а какие - случайные?
@@ -60,102 +60,128 @@ summary(fit_1)
 
 Какая из этих моделей лучше?
 ```{r}
-#AIC(fit_1)
-#AIC(fit_2)
+AIC(fit_1)
+AIC(fit_2)
 ```
 
 Проинтерпретируйте результаты лучшей модели способами, которые мы обсудили ранее.
 
 ## Speed dating
 ```{r}
-speed_dating <- read.csv("speed_dating.csv")
+load('speed_dating.RData')
 head(speed_dating)
 #str(speed_dating)
 #summary(speed_dating)
 ```
 
-Data exploration
+Подготовим данные - уже не надо, там есть дублированные переменные, которые scaled
 ```{r}
-cor.test(speed_dating$gender, speed_dating$match)
-cor.test(speed_dating$reading, speed_dating$match)
-cor.test(speed_dating$sports, speed_dating$match) 
-cor.test(speed_dating$goal, speed_dating$match)
-
-cor.test(speed_dating$music, speed_dating$match) #
-cor.test(speed_dating$go_out, speed_dating$match) #
-
-cor.test(speed_dating$date, speed_dating$match) #
-
-cor.test(speed_dating$art, speed_dating$match) #
-cor.test(speed_dating$attr, speed_dating$match) #
-cor.test(speed_dating$dec, speed_dating$match) 
-
-# Можно придумать что-то самим
-cor.test((speed_dating$age_o - speed_dating$age)^2, speed_dating$match) #
-
 # First, turn numeric to factors where needed
-speed_dating$dec <- as.factor(speed_dating$dec)
-speed_dating$goal <- as.factor(speed_dating$goal)
-speed_dating$music <- as.factor(speed_dating$music)
-speed_dating$gender <- as.factor(speed_dating$gender)
-speed_dating$sports <- as.factor(speed_dating$sports)
-speed_dating$career <- as.factor(speed_dating$career)
-speed_dating$date <- as.factor(speed_dating$date)
-speed_dating$go_out <- as.factor(speed_dating$go_out)
-speed_dating$sinc <- as.factor(speed_dating$sinc)
-speed_dating$attr <- as.factor(speed_dating$attr)
-speed_dating$art <- as.factor(speed_dating$art)
-speed_dating$from <- as.factor(speed_dating$from)
-speed_dating$wave <- as.factor(speed_dating$wave)
-speed_dating$attr <- as.factor(speed_dating$attr)
-speed_dating$zipcode <- as.factor(speed_dating$zipcode)
-speed_dating$intel <- as.factor(speed_dating$intel)
-speed_dating$fun <- as.factor(speed_dating$fun)
-speed_dating$reading <- as.factor(speed_dating$reading)
-speed_dating$theater <- as.factor(speed_dating$theater)
-speed_dating$shar <- as.factor(speed_dating$shar)
-speed_dating$amb <- as.factor(speed_dating$amb)
+#speed_dating$partner_race <- as.factor(speed_dating$partner_race)
+#speed_dating$attractive <- as.factor(speed_dating$attractive)
+#speed_dating$sincere <- as.factor(speed_dating$sincere)
+#speed_dating$intelligent <- as.factor(speed_dating$intelligent)
+#speed_dating$fun <- as.factor(speed_dating$fun)
+#speed_dating$ambitious <- as.factor(speed_dating$ambitious)
+#speed_dating$shared_interests <- #as.factor(speed_dating$shared_interests)
 
-str(speed_dating)
+#str(speed_dating)
+```
 
-newvars <- c("gender", "reading", "sports", "goal", "career", "music", "date", "go_out", "art", "attr", "age_o", "age")
-# Кажется, go_out и date не независимы
-
-newvars <- c("gender", "reading", "sports", "goal", "career", "music", "date", "go_out", "attr", "from", "zipcode", "sinc")
+Проверим на мультиколлинеарность. Ну вдруг привлекательность партнера зависит от того, насколько хорошее у партнера чувство юмора или высокий интеллект
+```{r}
+newvars <- c("attractive_sc", "sincere_sc", "ambitious_sc", "fun_sc", "shared_interests_sc")
 short_sd <- speed_dating[newvars]
 pairs(short_sd)
-# probably "from" and "zipcode are collinear"
-
-ggplot(speed_dating, aes(x = factor(music), y = age, col = factor(dec)))+geom_point()
-```
-
-Прикольно, вроде есть какой-то эффект у wave и gender случайный
-```{r}
-ggplot(speed_dating, aes(x=factor(dec), fill=factor(wave))) +
-geom_density(alpha=0.2)+facet_grid(gender ~ .)
-
-ggplot(speed_dating, aes(x=factor(dec), fill=factor(wave))) +
-geom_density(alpha=0.3)
-
-```
-
-```{r}
-ggplot(data = speed_dating, aes(x = intel, y = age, fill = dec)) + 
-  geom_boxplot()
+# тут всё ок
 ```
 
 Попытаемся зафитить модель
 
 ```{r}
-#fit2 = glmer(dec ~ date + intel + (1|wave:iid) + (1|gender),
-#                 data=speed_dating, family=binomial)
-#summary(fit2) #, correlation=F)
+fit1 = glmer(decision ~ sex + samerace + attractive_sc + sincere_sc
+                 + intelligent_sc 
+                 + (1|iid), data=speed_dating, family=binomial)
+summary(fit1, correlation=F)
 ```
 
 ```{r}
-#fit2 = glmer(dec ~ date + music + (1|wave:iid) + (1|gender),
-#                 data=speed_dating, family=binomial)
-#summary(fit2) #, correlation=F)
+fit2 <- glmer(decision ~ intelligent + (1|wave:iid) + (1|sex),
+                 data=speed_dating, family=binomial)
+summary(fit2, correlation=F)
+```
+
+```{r}
+fit1 <- glmer(decision ~ sex + fun_sc + attractive_sc + sincere_sc
+                 + intelligent_sc 
+                 + (1|iid), data=speed_dating, family=binomial)
+summary(fit1, correlation=F)
+```
+
+```{r}
+fit1 <- glmer(decision ~ sex + samerace + fun_sc + ambitious_sc + attractive_sc + sincere_sc
+                 + intelligent_sc 
+                 + (1|iid), data=speed_dating, family=binomial)
+fit2 <- glmer(decision ~ sex + samerace + fun_sc + ambitious_sc + attractive_sc + sincere_sc
+                 + (1|iid), data=speed_dating, family=binomial)
+fit3 <- glmer(decision ~ sex + samerace + fun_sc + ambitious_sc + attractive_sc + (1|iid), data=speed_dating, family=binomial)
+fit4 <- glmer(decision ~ sex + samerace + fun_sc + ambitious_sc + (1|iid), data=speed_dating, family=binomial)
+fit5 <- glmer(decision ~ sex + samerace + (1|iid), data=speed_dating, family=binomial)
+```
+
+```{r}
+#anova(fit4, fit5)
+```
+Так-так, проблемка
+
+```{r}
+sd <- speed_dating[!is.na(speed_dating$intelligent_sc),]
+#summary(sd)
+
+sd <- sd[!is.na(sd$sincere_sc),]
+summary(sd)
+```
+
+```{r}
+fit0 <- glmer(decision ~ sex + (1|iid), data=sd, family=binomial)
+fit1 <- glmer(decision ~ sex + samerace + (1|iid), data=sd, family=binomial)
+fit2 <- glmer(decision ~ sex + samerace + sincere_sc + (1|iid), data=sd, family=binomial)
+fit3 <- glmer(decision ~ sex + samerace + sincere_sc + intelligent_sc  + (1|iid), data=sd, family=binomial)
+```
+
+```{r}
+anova(fit3, fit2, fit1, fit0)
+```
+
+```{r}
+summary(fit3)
+```
+
+Поищем случайные эффекты.
+Вроде есть какой-то эффект у wave случайный
+```{r}
+ggplot(speed_dating, aes(x=factor(decision), fill=factor(wave))) +
+geom_density(alpha=0.2)
+```
+
+```{r}
+fit_r <- glmer(decision ~  sex + samerace + sincere_sc + intelligent_sc + (1|wave:iid),
+                 data=sd, family=binomial)
+summary(fit_r, correlation=F)
+
+fit3 <- glmer(decision ~ sex + samerace + sincere_sc + intelligent_sc  + (1|iid), data=sd, family=binomial)
+```
+
+```{r}
+anova(fit3, fit_r)
+```
+
+```{r}
+library(stargazer)
+stargazer(fit3, type = "text",
+          digits = 3,
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          digit.separator = "")
 ```
 
 ## Uncorrelated slope and intercept + model comparison
@@ -186,7 +212,7 @@ anova(model_ints_only, model_with_slopes)
 
 На самом деле, датасеты, в которых slope и intercept нескоррелированы практически не встречаются в реальной жизни.
 
-## Real linguistic research
+## Пример из жизни лингвиста
 
 Это задание на то, чтобы найти ошибку в исследовании наивного третьекурсника-лингвиста (меня) [А ещё, конечно же, на интерпретацию glmer]
 
@@ -255,5 +281,5 @@ times more likely with a single modifier than with multiple modifiers."
 ## References
 
 1. stepik Основы статистики. Часть 3.
-2.
+2. Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables.
 3.
